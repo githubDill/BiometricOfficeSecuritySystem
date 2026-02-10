@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-"""
-Si7021 Temperature and Humidity Sensor Driver
-for Raspberry Pi Zero W
-
-This driver implements I2C communication MANUALLY using GPIO bit-banging
-(no I2C libraries or hardware I2C interface required)
-"""
-
 import time
 from typing import Tuple, Optional
 
@@ -19,20 +10,9 @@ except ImportError:
 
 
 class ManualI2C:
-    """
-    Manual I2C implementation using GPIO bit-banging
-    Based on I2C protocol specification
-    """
     
     def __init__(self, scl_pin: int, sda_pin: int, frequency: int = 100000):
-        """
-        Initialize manual I2C interface
-        
-        Args:
-            scl_pin: GPIO pin number for SCL (clock)
-            sda_pin: GPIO pin number for SDA (data)
-            frequency: I2C clock frequency in Hz (default: 100kHz)
-        """
+ 
         self.scl_pin = scl_pin
         self.sda_pin = sda_pin
         
@@ -51,59 +31,48 @@ class ManualI2C:
         
         time.sleep(0.001)
     
+    # Set SCL pin LOW
     def _scl_low(self):
-        """Set SCL pin LOW"""
         GPIO.output(self.scl_pin, GPIO.LOW)
         time.sleep(self.delay)
     
+    # Set SCL pin HIGH
     def _scl_high(self):
-        """Set SCL pin HIGH"""
         GPIO.output(self.scl_pin, GPIO.HIGH)
         time.sleep(self.delay)
     
+    # Set SDA pin LOW
     def _sda_low(self):
-        """Set SDA pin LOW"""
         GPIO.setup(self.sda_pin, GPIO.OUT)
         GPIO.output(self.sda_pin, GPIO.LOW)
         time.sleep(self.delay)
     
+    # Set SDA pin HIGH (release)
     def _sda_high(self):
-        """Set SDA pin HIGH (release)"""
         GPIO.setup(self.sda_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         time.sleep(self.delay)
     
+    # Read SDA pin state
     def _read_sda(self) -> bool:
-        """Read SDA pin state"""
         GPIO.setup(self.sda_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         time.sleep(self.delay / 2)
         return GPIO.input(self.sda_pin)
     
+    # Generate I2C START condition - SDA goes LOW while SCL is HIGH
     def start_condition(self):
-        """
-        Generate I2C START condition
-        START: SDA goes LOW while SCL is HIGH
-        """
         self._sda_high()
         self._scl_high()
         self._sda_low()
         self._scl_low()
     
+    # Generate I2C STOP condition - SDA goes HIGH while SCL is HIGH
     def stop_condition(self):
-        """
-        Generate I2C STOP condition
-        STOP: SDA goes HIGH while SCL is HIGH
-        """
         self._sda_low()
         self._scl_high()
         self._sda_high()
     
+    # Write a single bit to I2C bus
     def write_bit(self, bit: bool):
-        """
-        Write a single bit to I2C bus
-        
-        Args:
-            bit: Bit value to write (True/False or 1/0)
-        """
         if bit:
             self._sda_high()
         else:
@@ -112,29 +81,19 @@ class ManualI2C:
         self._scl_high()
         self._scl_low()
     
+    # Read a single bit from I2C bus
+    # Returns: Bit value read (True/False)
     def read_bit(self) -> bool:
-        """
-        Read a single bit from I2C bus
-        
-        Returns:
-            Bit value read (True/False)
-        """
         self._sda_high()  # Release SDA
         self._scl_high()
         bit = self._read_sda()
         self._scl_low()
         return bit
     
+    # Write a byte to I2C bus
+    # Args: byte - Byte value to write (0-255)
+    # Returns: True if ACK received, False if NACK
     def write_byte(self, byte: int) -> bool:
-        """
-        Write a byte to I2C bus
-        
-        Args:
-            byte: Byte value to write (0-255)
-            
-        Returns:
-            True if ACK received, False if NACK
-        """
         # Write 8 bits, MSB first
         for i in range(8):
             bit = (byte >> (7 - i)) & 0x01
@@ -144,16 +103,10 @@ class ManualI2C:
         ack = not self.read_bit()  # ACK is LOW
         return ack
     
+    # Read a byte from I2C bus
+    # Args: ack - Send ACK after reading (True) or NACK (False)
+    # Returns: Byte value read (0-255)
     def read_byte(self, ack: bool = True) -> int:
-        """
-        Read a byte from I2C bus
-        
-        Args:
-            ack: Send ACK after reading (True) or NACK (False)
-            
-        Returns:
-            Byte value read (0-255)
-        """
         byte = 0
         
         # Read 8 bits, MSB first
@@ -166,17 +119,10 @@ class ManualI2C:
         
         return byte
     
+    # Write data to I2C device
+    # Args: address - 7-bit I2C device address, data - Bytes to write
+    # Returns: True if successful, False otherwise
     def write(self, address: int, data: bytes) -> bool:
-        """
-        Write data to I2C device
-        
-        Args:
-            address: 7-bit I2C device address
-            data: Bytes to write
-            
-        Returns:
-            True if successful, False otherwise
-        """
         self.start_condition()
         
         # Write address with WRITE bit (0)
@@ -193,17 +139,10 @@ class ManualI2C:
         self.stop_condition()
         return True
     
+    # Read data from I2C device
+    # Args: address - 7-bit I2C device address, length - Number of bytes to read
+    # Returns: Bytes read from device
     def read(self, address: int, length: int) -> bytes:
-        """
-        Read data from I2C device
-        
-        Args:
-            address: 7-bit I2C device address
-            length: Number of bytes to read
-            
-        Returns:
-            Bytes read from device
-        """
         self.start_condition()
         
         # Write address with READ bit (1)
@@ -222,18 +161,10 @@ class ManualI2C:
         self.stop_condition()
         return bytes(data)
     
+    # Write then read from I2C device (repeated start)
+    # Args: address - 7-bit I2C device address, write_data - Bytes to write, read_length - Number of bytes to read
+    # Returns: Bytes read from device
     def write_read(self, address: int, write_data: bytes, read_length: int) -> bytes:
-        """
-        Write then read from I2C device (repeated start)
-        
-        Args:
-            address: 7-bit I2C device address
-            write_data: Bytes to write
-            read_length: Number of bytes to read
-            
-        Returns:
-            Bytes read from device
-        """
         # Write phase
         self.start_condition()
         
@@ -262,16 +193,14 @@ class ManualI2C:
         self.stop_condition()
         return bytes(data)
     
+    # Cleanup GPIO
     def cleanup(self):
-        """Cleanup GPIO"""
         GPIO.cleanup([self.scl_pin, self.sda_pin])
 
 
+# Driver for Si7021 Temperature and Humidity Sensor
+# Uses manual I2C bit-banging implementation
 class Si7021:
-    """
-    Driver for Si7021 Temperature and Humidity Sensor
-    Uses manual I2C bit-banging implementation
-    """
     
     # I2C Address (fixed)
     SI7021_ADDRESS = 0x40
@@ -304,14 +233,9 @@ class Si7021:
     RESOLUTION_RH10_TEMP13 = 0x80
     RESOLUTION_RH11_TEMP11 = 0x81
     
+    # Initialize the Si7021 sensor with manual I2C
+    # Args: scl_pin - GPIO pin for SCL (default: GPIO 3), sda_pin - GPIO pin for SDA (default: GPIO 2)
     def __init__(self, scl_pin: int = 3, sda_pin: int = 2):
-        """
-        Initialize the Si7021 sensor with manual I2C
-        
-        Args:
-            scl_pin: GPIO pin for SCL (default: GPIO 3)
-            sda_pin: GPIO pin for SDA (default: GPIO 2)
-        """
         self.i2c = ManualI2C(scl_pin, sda_pin)
         self.address = self.SI7021_ADDRESS
         
@@ -322,8 +246,8 @@ class Si7021:
         # Reset sensor
         self.reset()
     
+    # Check if device is present
     def _check_device(self) -> bool:
-        """Check if device is present"""
         try:
             self.i2c.write(self.address, bytes([self.CMD_READ_USER_REG]))
             time.sleep(0.001)
@@ -332,11 +256,9 @@ class Si7021:
         except:
             return False
     
+    # Calculate CRC-8 checksum
+    # Polynomial: x^8 + x^5 + x^4 + 1 (0x131)
     def _crc8(self, data: bytes) -> int:
-        """
-        Calculate CRC-8 checksum
-        Polynomial: x^8 + x^5 + x^4 + 1 (0x131)
-        """
         crc = 0x00
         for byte in data:
             crc ^= byte
@@ -348,8 +270,8 @@ class Si7021:
             crc &= 0xFF
         return crc
     
+    # Perform measurement using No Hold Master Mode
     def _measure_no_hold(self, command: int, delay: float) -> int:
-        """Perform measurement using No Hold Master Mode"""
         # Send measurement command
         self.i2c.write(self.address, bytes([command]))
         
@@ -375,18 +297,14 @@ class Si7021:
         raw_value = (data[0] << 8) | data[1]
         return raw_value
     
+    # Perform soft reset
     def reset(self):
-        """Perform soft reset"""
         self.i2c.write(self.address, bytes([self.CMD_RESET]))
         time.sleep(self.DELAY_RESET)
     
+    # Read relative humidity
+    # Returns: Relative humidity in percent (0-100%)
     def read_humidity(self) -> float:
-        """
-        Read relative humidity
-        
-        Returns:
-            Relative humidity in percent (0-100%)
-        """
         raw_humidity = self._measure_no_hold(
             self.CMD_MEASURE_RH_NO_HOLD,
             self.DELAY_MEASURE_RH_12BIT
@@ -398,13 +316,9 @@ class Si7021:
         
         return humidity
     
+    # Read temperature
+    # Returns: Temperature in degrees Celsius
     def read_temperature(self) -> float:
-        """
-        Read temperature
-        
-        Returns:
-            Temperature in degrees Celsius
-        """
         raw_temp = self._measure_no_hold(
             self.CMD_MEASURE_TEMP_NO_HOLD,
             self.DELAY_MEASURE_TEMP_14BIT
@@ -415,8 +329,8 @@ class Si7021:
         
         return temperature
     
+    # Read temperature from previous humidity measurement
     def read_temperature_from_humidity(self) -> float:
-        """Read temperature from previous humidity measurement"""
         self.i2c.write(self.address, bytes([self.CMD_READ_TEMP_FROM_RH]))
         time.sleep(0.002)
         
@@ -426,43 +340,39 @@ class Si7021:
         temperature = ((175.72 * raw_temp) / 65536.0) - 46.85
         return temperature
     
+    # Read both humidity and temperature efficiently
+    # Returns: Tuple of (humidity, temperature)
     def read_both(self) -> Tuple[float, float]:
-        """
-        Read both humidity and temperature efficiently
-        
-        Returns:
-            Tuple of (humidity, temperature)
-        """
         humidity = self.read_humidity()
         temperature = self.read_temperature_from_humidity()
         return humidity, temperature
     
+    # Read user register
     def read_user_register(self) -> int:
-        """Read user register"""
         self.i2c.write(self.address, bytes([self.CMD_READ_USER_REG]))
         time.sleep(0.001)
         data = self.i2c.read(self.address, 1)
         return data[0]
     
+    # Write user register
     def write_user_register(self, value: int):
-        """Write user register"""
         self.i2c.write(self.address, bytes([self.CMD_WRITE_USER_REG, value & 0xFF]))
         time.sleep(0.001)
     
+    # Set measurement resolution
     def set_resolution(self, resolution: int):
-        """Set measurement resolution"""
         user_reg = self.read_user_register()
         user_reg &= ~self.USER_REG_RESOLUTION_MASK
         user_reg |= (resolution & self.USER_REG_RESOLUTION_MASK)
         self.write_user_register(user_reg)
     
+    # Get current resolution
     def get_resolution(self) -> int:
-        """Get current resolution"""
         user_reg = self.read_user_register()
         return user_reg & self.USER_REG_RESOLUTION_MASK
     
+    # Enable or disable on-chip heater
     def enable_heater(self, enable: bool = True):
-        """Enable or disable on-chip heater"""
         user_reg = self.read_user_register()
         if enable:
             user_reg |= self.USER_REG_HTRE
@@ -470,31 +380,27 @@ class Si7021:
             user_reg &= ~self.USER_REG_HTRE
         self.write_user_register(user_reg)
     
+    # Check if heater is enabled
     def is_heater_enabled(self) -> bool:
-        """Check if heater is enabled"""
         user_reg = self.read_user_register()
         return bool(user_reg & self.USER_REG_HTRE)
     
+    # Set heater current level (0-15)
     def set_heater_level(self, level: int):
-        """Set heater current level (0-15)"""
         level = max(0, min(15, level))
         self.i2c.write(self.address, bytes([self.CMD_WRITE_HEATER_REG, level & 0x0F]))
         time.sleep(0.001)
     
+    # Get current heater level
     def get_heater_level(self) -> int:
-        """Get current heater level"""
         self.i2c.write(self.address, bytes([self.CMD_READ_HEATER_REG]))
         time.sleep(0.001)
         data = self.i2c.read(self.address, 1)
         return data[0] & 0x0F
     
+    # Read 64-bit serial number
+    # Returns: Tuple of (serial_a, serial_b) - two 32-bit values
     def read_serial_number(self) -> Tuple[int, int]:
-        """
-        Read 64-bit serial number
-        
-        Returns:
-            Tuple of (serial_a, serial_b) - two 32-bit values
-        """
         # Read first part
         data1 = self.i2c.write_read(self.address, bytes([0xFA, 0x0F]), 8)
         
@@ -507,32 +413,26 @@ class Si7021:
         
         return serial_a, serial_b
     
+    # Read firmware revision
+    # Returns: Firmware revision (0xFF = v1.0, 0x20 = v2.0)
     def read_firmware_revision(self) -> int:
-        """
-        Read firmware revision
-        
-        Returns:
-            Firmware revision (0xFF = v1.0, 0x20 = v2.0)
-        """
         data = self.i2c.write_read(self.address, bytes([0x84, 0xB8]), 1)
         return data[0]
     
+    # Cleanup GPIO
     def cleanup(self):
-        """Cleanup GPIO"""
         self.i2c.cleanup()
     
+    # Cleanup on deletion
     def __del__(self):
-        """Cleanup on deletion"""
         try:
             self.cleanup()
         except:
             pass
 
 
+# Example usage of the Si7021 driver with manual I2C
 def main():
-    """
-    Example usage of the Si7021 driver with manual I2C
-    """
     print("Si7021 Temperature + Humidity Sensor Test")
     print("Manual I2C Bit-Banging Implementation")
     print("=" * 55)
