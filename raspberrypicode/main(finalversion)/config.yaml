@@ -1,0 +1,18 @@
+serial: "/dev/serial0"
+timeout: 0
+topic: "fingerprint"
+mqtt:
+  user: "user"
+  pass: "pass"
+  host: "a313wbw2spjzzg-ats.iot.us-east-1.amazonaws.com"
+  port: 8883
+  topic: "fingerprint/data"
+  # Add these new lines for AWS
+  ca_cert: "cert/AmazonRootCA1.pem"
+  cert_file: "cert/2fee281c79eca72e337de63a18d668fe96214d140ca5a7df9cc4dad630ffbcc0-certificate.pem.crt"
+  key_file: "cert/2fee281c79eca72e337de63a18d668fe96214d140ca5a7df9cc4dad630ffbcc0-private.pem.key"
+temp_sensor:
+  scl_pin: 3
+  sda_pin: 2
+  topic: "fingerprint/temp"
+  interval: 10
