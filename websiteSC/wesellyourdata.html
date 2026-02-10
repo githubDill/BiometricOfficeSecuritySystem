@@ -23,6 +23,7 @@
             --success: #27ae60;
             --danger: #e74c3c;
             --info: #3498db;
+            --warning: #f39c12;
             --bg-dark: #0a0e1a;
             --bg-card: #1a1f35;
             --text-primary: #ecf0f1;
@@ -214,6 +215,64 @@
             font-weight: 600;
         }
 
+        /* Temperature Panel */
+        .temp-humidity-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .sensor-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .sensor-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--accent);
+        }
+
+        .sensor-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 12px;
+            color: var(--accent);
+            filter: drop-shadow(0 0 8px var(--glow));
+        }
+
+        .sensor-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .sensor-unit {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+
+        .sensor-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 8px;
+        }
+
+        .sensor-timestamp {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            opacity: 0.7;
+        }
+
         /* Enrollment Panel */
         .enrollment-form {
             display: flex;
@@ -362,7 +421,7 @@
             flex-direction: column;
             gap: 12px;
             overflow-y: auto;
-            max-height: 420px;
+            max-height: 672px;
         }
 
         .activity-item {
@@ -623,11 +682,11 @@
         <!-- Main Dashboard Grid -->
         <div class="dashboard-grid">
             
-            <!-- Left Column: Enrollment -->
+            <!-- Left Column: Enrollment & Environment -->
             <div class="column-left">
                 
                 <!-- Enrollment Panel -->
-                <section class="panel" style="flex: 1;">
+                <section class="panel">
                     <div class="panel-header">
                         <h2>Enroll New User</h2>
                     </div>
@@ -660,6 +719,32 @@
                                 <div class="stat-value" id="active-count">0</div>
                                 <div class="stat-label">In Building</div>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Temperature & Humidity Panel -->
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2>Environmental Monitoring</h2>
+                    </div>
+                    <div class="temp-humidity-grid">
+                        <!-- Temperature Card -->
+                        <div class="sensor-card">
+                            <svg class="sensor-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                            </svg>
+                            <div class="sensor-value" id="temperature-value">--</div>
+                            <div class="sensor-label">Temperature</div>
+                        </div>
+                        
+                        <!-- Humidity Card -->
+                        <div class="sensor-card">
+                            <svg class="sensor-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                            </svg>
+                            <div class="sensor-value" id="humidity-value">--</div>
+                            <div class="sensor-label">Humidity</div>
                         </div>
                     </div>
                 </section>
@@ -731,6 +816,31 @@
                 toast.style.animation = 'slideIn 0.3s ease reverse';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+        }
+
+        // Fetch temperature data from your API endpoint
+        async function fetchTemperatureData() {
+            const API_URL = "https://bhwtkngcic.execute-api.us-east-1.amazonaws.com/default/GetLatestEnvironment";
+            
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                console.log("Raw data from API:", data);
+                
+                // Logic for Temperature
+                const t = data.payload ? data.payload.temperature : data.temperature;
+                if (t !== undefined) {
+                    document.getElementById('temperature-value').innerHTML = `${Number(t).toFixed(1)}<span class="sensor-unit">°C</span>`;
+                }
+                
+                // Logic for Humidity
+                const h = data.payload ? data.payload.humidity : data.humidity;
+                if (h !== undefined) {
+                    document.getElementById('humidity-value').innerHTML = `${Number(h).toFixed(1)}<span class="sensor-unit">%</span>`;
+                }
+            } catch (error) {
+                console.error("Temperature fetch error:", error);
+            }
         }
 
         // 1. SEND ENROLL COMMAND
@@ -872,9 +982,14 @@
             showToast('Activity cleared', 'success');
         }
 
-        // Auto-refresh every 3 seconds
+        // Auto-refresh every 3 seconds for fingerprint data
         setInterval(refreshDashboard, 3000);
+        // Auto-refresh every 30 seconds for temperature data
+        setInterval(fetchTemperatureData, 30000);
+        
+        // Initial load
         refreshDashboard();
+        fetchTemperatureData();
 
         // Update system info
         document.getElementById('system-info').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
