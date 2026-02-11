@@ -14,7 +14,7 @@ RPI Code can be found under raspberricode->main(finalversion)
 
 tests folder contains test scripts used to ensure functionality
 
-Main website which shows all the data from sensors can be found in websiteSC->wesellyourdata.html, it is run with VS code extension "Live Servers"
+Main website which shows all the data from the sensors can be found in websiteSC->wesellyourdata.html, it is run with VS code extension "Live Servers"
 
 System flow:
 Fingerprint Sensor & (Si7021 sensor) -> MQTT/Iot Core -> Iot Rule -> DynamoB -> Lamba Functions -> API Gateway -> Website
